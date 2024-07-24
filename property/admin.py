@@ -45,4 +45,4 @@ class SalonAdmin(admin.ModelAdmin):
     search_fields = ('address',)
     list_display = ('name', 'address', 'get_services', 'get_staff')
     list_filter = ('services',)
-    raw_id_fields = ('services',)
+    raw_id_fields = ('services', 'staff')
