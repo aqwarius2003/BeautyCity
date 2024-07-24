@@ -3,7 +3,7 @@ from .models import Customer, Service, Staff, Appointment, Salon
 
 
 @admin.register(Customer)
-class FlatAdmin(admin.ModelAdmin):
+class CustomerAdmin(admin.ModelAdmin):
     search_fields = ('first_name', 'last_name', 'phone', 'email')
     list_display = ('first_name', 'last_name', 'phone', 'email', 'telegram_id')
     list_filter = ('first_name', 'last_name', 'phone', 'email')
@@ -16,12 +16,18 @@ class ServiceAdmin(admin.ModelAdmin):
     list_filter = ('name', 'price')
 
 
+class PropertyAppointmentStaff(admin.TabularInline):
+    model = Appointment
+    raw_id_fields = ('customer', 'services', 'salon')
+
+
 @admin.register(Staff)
 class StaffAdmin(admin.ModelAdmin):
     search_fields = ('first_name', 'last_name')
     list_display = ('first_name', 'last_name', 'phone', 'email', 'get_services')
     list_filter = ('services',)
     raw_id_fields = ('services',)
+    inlines = [PropertyAppointmentStaff, ]
 
 
 @admin.register(Appointment)
