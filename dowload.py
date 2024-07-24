@@ -2,6 +2,7 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 from actions_database import download_document
 
+
 # Функция-обработчик команды /start
 def start(update, context):
     user = update.message.from_user
@@ -13,6 +14,7 @@ def start(update, context):
         reply_markup=keyboard
     )
 
+
 # Функция-обработчик нажатия кнопки встроенной клавиатуры
 def button(update, context):
     query = update.callback_query
@@ -20,6 +22,7 @@ def button(update, context):
         download_document(query.message.chat_id, context.bot)
         # Остальной код для вывода кнопок "Согласен" и "Отказаться"
         pass
+
 
 # Создаем экземпляр бота и регистрируем обработчики
 updater = Updater(token='', use_context=True)
