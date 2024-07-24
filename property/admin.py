@@ -19,6 +19,7 @@ class ServiceAdmin(admin.ModelAdmin):
 class PropertyAppointmentStaff(admin.TabularInline):
     model = Appointment
     raw_id_fields = ('customer', 'services', 'salon')
+    extra = 0
 
 
 @admin.register(Staff)
