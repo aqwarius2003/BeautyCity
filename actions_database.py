@@ -1,19 +1,19 @@
 import sqlite3
 
 
-def create_clients_table():
-    conn = sqlite3.connect('clients.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS clients (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id INTEGER UNIQUE,
-            first_name TEXT,
-            phone TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+# def create_clients_table():
+#     conn = sqlite3.connect('clients.db')
+#     cursor = conn.cursor()
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS clients (
+#             id INTEGER PRIMARY KEY AUTOINCREMENT,
+#             telegram_id INTEGER UNIQUE,
+#             first_name TEXT,
+#             phone TEXT
+#         )
+#     ''')
+#     conn.commit()
+#     conn.close()
 
 
 def is_client_in_database(user_id):
@@ -33,7 +33,6 @@ def add_client_to_database(user_id, first_name, phone):
     conn.commit()
     conn.close()
 
-from telegram import Update
 
 def download_document(chat_id, bot):
     bot.send_document(chat_id=chat_id, document=open('soglasie.pdf', 'rb'))
