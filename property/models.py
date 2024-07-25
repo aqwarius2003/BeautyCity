@@ -46,7 +46,11 @@ class Salon(models.Model):
     staff = models.ManyToManyField(Staff, related_name='staff')
 
     def get_services(self):
-        return ", ".join([service.name for service in self.services.all()])
+        all_services = []
+        for staff in self.staff.all():
+            for service in staff.services.all():
+                all_services.append(service.name)
+        return ", ".join(all_services)
 
     def get_staff(self):
         return ', '.join([f'{staff.first_name} {staff.last_name}' for staff in self.staff.all()])
