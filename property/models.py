@@ -1,13 +1,14 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
+from datetime import datetime, timedelta
 
 
 class Customer(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    phone = models.CharField(max_length=15, unique=True)
+    phone = PhoneNumberField(unique=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     telegram_id = models.IntegerField(unique=True, null=True, blank=True)
 
@@ -28,12 +29,12 @@ class Service(models.Model):
 class Staff(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    phone = models.CharField(max_length=15, unique=True)
+    phone = PhoneNumberField(unique=True)
     email = models.EmailField(unique=True)
     services = models.ManyToManyField(Service, related_name='staff')
 
     def get_services(self):
-        return ", ".join([str(services) for services in self.services.all()])
+        return ", ".join([service.name for service in self.services.all()])
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -46,31 +47,39 @@ class Salon(models.Model):
     staff = models.ManyToManyField(Staff, related_name='staff')
 
     def get_services(self):
-        return ", ".join([str(service) for service in self.services.all()])
+        return ", ".join([service.name for service in self.services.all()])
 
     def get_staff(self):
-        return ', '.join([str(staff) for staff in self.staff.all()])
+        return ', '.join([f'{staff.first_name} {staff.last_name}' for staff in self.staff.all()])
 
     def __str__(self):
         return f'{self.name}, {self.address}'
+
+
+class StaffSchedule(models.Model):
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='schedules')
+    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='schedules')
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    def __str__(self):
+        return f"Schedule for {self.staff} at {self.salon} on {self.date} from {self.start_time} to {self.end_time}"
 
 
 class Appointment(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='appointments')
     services = models.ManyToManyField(Service, related_name='appointments')
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='appointments')
-    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='appointments', default=1)
+    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='appointments')
     date_time = models.DateTimeField()
     created_at = models.DateTimeField(default=timezone.now)
 
     def get_services(self):
-        return ", ".join([str(services) for services in self.services.all()])
+        return ", ".join([service.name for service in self.services.all()])
+
+    def get_total_duration(self):
+        return self.services.aggregate(total_duration=models.Sum('duration'))['total_duration']
 
     def __str__(self):
         return f"Appointment for {self.customer} with {self.staff} on {self.date_time}"
-
-
-
-
-
-
