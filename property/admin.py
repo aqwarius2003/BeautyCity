@@ -42,7 +42,7 @@ class AppointmentAdmin(admin.ModelAdmin):
 
 class PropertyStaffScheduleSalon(admin.TabularInline):
     model = StaffSchedule
-    raw_id_fields = ('staff', 'salon')
+    raw_id_fields = ()
     extra = 0
 
 
@@ -57,5 +57,5 @@ class SalonAdmin(admin.ModelAdmin):
 
 @admin.register(StaffSchedule)
 class StaffScheduleAdmin(admin.ModelAdmin):
-    list_display = ('staff', 'salon', 'date', 'start_time', 'end_time', )
-    raw_id_fields = ('staff', 'salon')
+    list_display = ('staff', 'salon', 'get_services', 'date', 'start_time', 'end_time', )
+    raw_id_fields = ()
