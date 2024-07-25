@@ -30,6 +30,7 @@ class Staff(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     phone = PhoneNumberField(unique=True)
+    description = models.TextField(max_length=256, default='')
     email = models.EmailField(unique=True)
     services = models.ManyToManyField(Service, related_name='staff')
 
@@ -37,23 +38,16 @@ class Staff(models.Model):
         return ", ".join([service.name for service in self.services.all()])
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f'{self.first_name }: {", ".join([service.name for service in self.services.all()])}'
 
 
 class Salon(models.Model):
     name = models.CharField(max_length=20, unique=True, default='')
     address = models.CharField(max_length=50, unique=True)
-    staff = models.ManyToManyField(Staff, related_name='staff')
+    description = models.TextField(max_length=256, default='')
 
-    def get_services(self):
-        all_services = []
-        for staff in self.staff.all():
-            for service in staff.services.all():
-                all_services.append(service.name)
-        return ", ".join(all_services)
-
-    def get_staff(self):
-        return ', '.join([f'{staff.first_name} {staff.last_name}' for staff in self.staff.all()])
+    def get_schedules(self):
+        return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in self.schedules.all()])
 
     def __str__(self):
         return f'{self.name}, {self.address}'
@@ -63,8 +57,8 @@ class StaffSchedule(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='schedules')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='schedules')
     date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    start_time = models.TimeField(default='08:00:00')
+    end_time = models.TimeField(default='18:00:00')
 
     def get_services(self):
         return ", ".join([service.name for service in self.staff.services.all()])

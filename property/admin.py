@@ -49,7 +49,7 @@ class PropertyStaffScheduleSalon(admin.TabularInline):
 @admin.register(Salon)
 class SalonAdmin(admin.ModelAdmin):
     search_fields = ('address',)
-    list_display = ('name', 'address', 'get_services', 'get_staff')
+    list_display = ('name', 'address', 'get_schedules')
     list_filter = ()
     raw_id_fields = ()
     inlines = [PropertyAppointmentStaff, PropertyStaffScheduleSalon]
