@@ -18,7 +18,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
 class PropertyAppointmentStaff(admin.TabularInline):
     model = Appointment
-    raw_id_fields = ('customer', 'services', 'salon')
+    raw_id_fields = ('customer',)
     extra = 0
 
 
@@ -27,7 +27,7 @@ class StaffAdmin(admin.ModelAdmin):
     search_fields = ('first_name', 'last_name')
     list_display = ('first_name', 'last_name', 'phone', 'email', 'get_services')
     list_filter = ('services',)
-    raw_id_fields = ('services',)
+    raw_id_fields = ()
     inlines = [PropertyAppointmentStaff, ]
 
 
@@ -37,7 +37,7 @@ class AppointmentAdmin(admin.ModelAdmin):
     list_display = ('customer', 'get_services', 'staff', 'date_time', 'get_total_duration', 'salon', 'created_at')
     list_filter = ('services', 'staff', 'salon')
     readonly_fields = ('created_at',)
-    raw_id_fields = ('customer', 'services', 'staff', 'salon')
+    raw_id_fields = ('customer',)
 
 
 class PropertyStaffScheduleSalon(admin.TabularInline):
@@ -50,8 +50,8 @@ class PropertyStaffScheduleSalon(admin.TabularInline):
 class SalonAdmin(admin.ModelAdmin):
     search_fields = ('address',)
     list_display = ('name', 'address', 'get_services', 'get_staff')
-    list_filter = ('services',)
-    raw_id_fields = ('services', 'staff')
+    list_filter = ()
+    raw_id_fields = ()
     inlines = [PropertyAppointmentStaff, PropertyStaffScheduleSalon]
 
 

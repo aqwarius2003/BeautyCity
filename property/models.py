@@ -43,7 +43,6 @@ class Staff(models.Model):
 class Salon(models.Model):
     name = models.CharField(max_length=20, unique=True, default='')
     address = models.CharField(max_length=50, unique=True)
-    services = models.ManyToManyField(Service, related_name='salons')
     staff = models.ManyToManyField(Staff, related_name='staff')
 
     def get_services(self):
@@ -62,6 +61,9 @@ class StaffSchedule(models.Model):
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
+
+    def get_services(self):
+        return ", ".join([service.name for service in self.staff.services.all()])
 
     def __str__(self):
         return f"Schedule for {self.staff} at {self.salon} on {self.date} from {self.start_time} to {self.end_time}"
