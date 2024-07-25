@@ -38,7 +38,7 @@ class Staff(models.Model):
         return ", ".join([service.name for service in self.services.all()])
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f'{self.first_name }: {", ".join([service.name for service in self.services.all()])}'
 
 
 class Salon(models.Model):
