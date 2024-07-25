@@ -83,3 +83,14 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"Appointment for {self.customer} with {self.staff} on {self.date_time}"
+
+
+class TimeSlot(models.Model):
+    duration = models.DurationField()
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='timeslots')
+    date = models.DateField()
+    start_time = models.TimeField(default='08:00:00')
+    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, related_name='timeslots')
+
+    def __str__(self):
+        return f'Timeslot {self.staff} {self.duration} {self.date}'
