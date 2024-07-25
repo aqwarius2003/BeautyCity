@@ -57,8 +57,8 @@ class StaffSchedule(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='schedules')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='schedules')
     date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    start_time = models.TimeField(default='08:00:00')
+    end_time = models.TimeField(default='18:00:00')
 
     def get_services(self):
         return ", ".join([service.name for service in self.staff.services.all()])
