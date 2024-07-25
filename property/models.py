@@ -30,6 +30,7 @@ class Staff(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     phone = PhoneNumberField(unique=True)
+    description = models.TextField(max_length=256, default='')
     email = models.EmailField(unique=True)
     services = models.ManyToManyField(Service, related_name='staff')
 
@@ -43,17 +44,10 @@ class Staff(models.Model):
 class Salon(models.Model):
     name = models.CharField(max_length=20, unique=True, default='')
     address = models.CharField(max_length=50, unique=True)
-    staff = models.ManyToManyField(Staff, related_name='staff')
+    description = models.TextField(max_length=256, default='')
 
-    def get_services(self):
-        all_services = []
-        for staff in self.staff.all():
-            for service in staff.services.all():
-                all_services.append(service.name)
-        return ", ".join(all_services)
-
-    def get_staff(self):
-        return ', '.join([f'{staff.first_name} {staff.last_name}' for staff in self.staff.all()])
+    def get_schedules(self):
+        return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in self.schedules.all()])
 
     def __str__(self):
         return f'{self.name}, {self.address}'
