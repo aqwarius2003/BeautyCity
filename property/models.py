@@ -53,7 +53,7 @@ class Salon(models.Model):
         return f'{self.name}, {self.address}'
 
 
-class StaffSchedule(models.Model):
+class Schedule(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='schedules')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='schedules')
     date = models.DateField()
@@ -72,7 +72,8 @@ class Appointment(models.Model):
     services = models.ManyToManyField(Service, related_name='appointments')
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='appointments')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='appointments')
-    date_time = models.DateTimeField()
+    date = models.DateField(default=datetime.today().strftime('%Y-%m-%d'))
+    start_time = models.TimeField(default='08:00:00')
     created_at = models.DateTimeField(default=timezone.now)
 
     def get_services(self):
@@ -82,7 +83,7 @@ class Appointment(models.Model):
         return self.services.aggregate(total_duration=models.Sum('duration'))['total_duration']
 
     def __str__(self):
-        return f"Appointment for {self.customer} with {self.staff} on {self.date_time}"
+        return f"Appointment for {self.customer} with {self.staff} on {self.date}, {self.start_time}"
 
 
 class TimeSlot(models.Model):

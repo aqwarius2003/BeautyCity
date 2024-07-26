@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Service, Staff, Appointment, Salon, StaffSchedule, TimeSlot
+from .models import Customer, Service, Staff, Appointment, Salon, Schedule, TimeSlot
 
 
 @admin.register(Customer)
@@ -39,14 +39,14 @@ class StaffAdmin(admin.ModelAdmin):
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
     search_fields = ('customer',)
-    list_display = ('customer', 'get_services', 'staff', 'date_time', 'get_total_duration', 'salon', 'created_at')
+    list_display = ('customer', 'get_services', 'staff', 'date', 'start_time', 'get_total_duration', 'salon', 'created_at')
     list_filter = ('services', 'staff', 'salon')
     readonly_fields = ('created_at',)
     raw_id_fields = ()
 
 
 class PropertyStaffScheduleSalon(admin.TabularInline):
-    model = StaffSchedule
+    model = Schedule
     raw_id_fields = ()
     extra = 0
 
@@ -60,7 +60,7 @@ class SalonAdmin(admin.ModelAdmin):
     inlines = [PropertyAppointmentStaff, PropertyStaffScheduleSalon]
 
 
-@admin.register(StaffSchedule)
+@admin.register(Schedule)
 class StaffScheduleAdmin(admin.ModelAdmin):
     list_display = ('staff', 'salon', 'get_services', 'date', 'start_time', 'end_time', )
     raw_id_fields = ()
