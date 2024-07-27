@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 class Customer(models.Model):
     first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=150, null=True)  # Проверьте null=False
     phone = PhoneNumberField(unique=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     telegram_id = models.IntegerField(unique=True, null=True, blank=True)
