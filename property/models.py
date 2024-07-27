@@ -1,8 +1,8 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 from datetime import datetime, timedelta
+from django.db.models import Q
 
 
 class Customer(models.Model):
@@ -19,9 +19,16 @@ class Customer(models.Model):
 class Service(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
-    duration = models.DurationField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    duration = models.DurationField(default=timedelta)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=100)
 
+    @classmethod
+    def get_default_pk(cls):
+        service, created = cls.objects.get_or_create(
+            name='default service',
+            defaults=dict(description='this is not an exam'),
+        )
+        return service.pk
 
     def __str__(self):
         return self.name
@@ -55,9 +62,6 @@ class Salon(models.Model):
         staff = Staff.objects.filter(schedules__salon=self).distinct()
         return staff
 
-    # from property.models import Customer, Service, Staff, Salon, Schedule, Appointment, TimeSlot
-    # salon = Salon.objects.get(address__contains='Ленина')
-
     def get_price_list(self):
         price_list = self.get_services().values('name', 'price')
         return price_list
@@ -72,10 +76,36 @@ class Salon(models.Model):
         return available_dates
 
     def get_available_time(self, requested_service, date):
-        schedule = self.schedules.filter(
-            date=date, staff__services__in=Service.objects.filter(name__contains=requested_service))
+        schedules = self.schedules.filter(staff__services__in=Service.objects.filter(name__contains=requested_service),date=date).distinct()
 
-        return
+        if not schedules.exists():
+            return []
+
+        service_duration_timedelta = schedules.first().staff.services.get(name=requested_service).duration
+        service_duration_minutes = service_duration_timedelta.total_seconds() // 60
+
+        appointments = Appointment.objects.filter(staff__in=schedules.values('staff'), date=date)
+
+        available_times = []
+
+        for schedule in schedules:
+            start_time = datetime.combine(date, schedule.start_time)
+            end_time = datetime.combine(date, schedule.end_time)
+
+            current_time = start_time
+            while current_time + timedelta(minutes=service_duration_minutes) <= end_time:
+                conflicts = appointments.filter(
+                    Q(start_time__lte=current_time.time()) &
+                    Q(start_time__gte=(current_time - timedelta(minutes=service_duration_minutes)).time())
+                )
+
+                if not conflicts.exists():
+                    available_times.append(current_time.time())
+                current_time += timedelta(minutes=60)
+
+        available_times = sorted(set(available_times))
+
+        return available_times
 
     def __str__(self):
         return f'{self.name}, {self.address}'
@@ -100,29 +130,12 @@ class Schedule(models.Model):
 
 class Appointment(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='appointments')
-    services = models.ManyToManyField(Service, related_name='appointments')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='appointments', default=Service.get_default_pk)
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='appointments')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='appointments')
     date = models.DateField(default=datetime.today().strftime('%Y-%m-%d'))
     start_time = models.TimeField(default='08:00:00')
     created_at = models.DateTimeField(default=timezone.now)
 
-    def get_services(self):
-        return ", ".join([service.name for service in self.services.all()])
-
-    def get_total_duration(self):
-        return self.services.aggregate(total_duration=models.Sum('duration'))['total_duration']
-
     def __str__(self):
         return f"Appointment for {self.customer} with {self.staff} on {self.date}, {self.start_time}"
-
-
-class TimeSlot(models.Model):
-    duration = models.DurationField()
-    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='timeslots')
-    date = models.DateField()
-    start_time = models.TimeField(default='08:00:00')
-    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, related_name='timeslots')
-
-    def __str__(self):
-        return f'Timeslot {self.staff} {self.duration} {self.date}'
