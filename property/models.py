@@ -51,6 +51,13 @@ class Salon(models.Model):
         services = Service.objects.filter(staff__schedules__salon=self).distinct()
         return services
 
+    def get_staff(self):
+        staff = Staff.objects.filter(schedules__salon=self).distinct()
+        return staff
+
+    # from property.models import Customer, Service, Staff, Salon, Schedule, Appointment, TimeSlot
+    # salon = Salon.objects.get(address__contains='Ленина')
+
     def get_price_list(self):
         price_list = self.get_services().values('name', 'price')
         return price_list
@@ -65,6 +72,9 @@ class Salon(models.Model):
         return available_dates
 
     def get_available_time(self, requested_service, date):
+        schedule = self.schedules.filter(
+            date=date, staff__services__in=Service.objects.filter(name__contains=requested_service))
+
         return
 
     def __str__(self):
