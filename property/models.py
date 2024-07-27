@@ -22,6 +22,7 @@ class Service(models.Model):
     duration = models.DurationField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
+
     def __str__(self):
         return self.name
 
@@ -46,8 +47,25 @@ class Salon(models.Model):
     address = models.CharField(max_length=50, unique=True)
     description = models.TextField(max_length=256, default='')
 
+    def get_services(self):
+        services = Service.objects.filter(staff__schedules__salon=self).distinct()
+        return services
+
+    def get_price_list(self):
+        price_list = self.get_services().values('name', 'price')
+        return price_list
+
     def get_schedules(self):
         return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in self.schedules.all()])
+
+    def get_available_dates(self, requested_service):
+        available_dates = self.schedules.filter(
+            staff__services__in=Service.objects.filter(
+                name__contains=requested_service)).distinct().values_list('date', flat=True)
+        return available_dates
+
+    def get_available_time(self, requested_service, date):
+        return
 
     def __str__(self):
         return f'{self.name}, {self.address}'
@@ -61,7 +79,10 @@ class Schedule(models.Model):
     end_time = models.TimeField(default='18:00:00')
 
     def get_services(self):
-        return ", ".join([service.name for service in self.staff.services.all()])
+        return [service.name for service in self.staff.services.all()]
+
+    def get_appointments(self):
+        return Appointment.objects.get(date=self.date).get_total_duration()
 
     def __str__(self):
         return f"Schedule for {self.staff} at {self.salon} on {self.date} from {self.start_time} to {self.end_time}"
