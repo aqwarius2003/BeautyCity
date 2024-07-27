@@ -1,0 +1,23 @@
+[
+    {
+        "name": "Уведомления",
+        "submenu": [
+            {"name": "Напомнить о завтрашней записи", "callback_data": "remind_tomorrow"},
+            {"name": "Напомнить кто давно не был", "callback_data": "remind_long_absence"},
+            {"name": "Отправить сообщения всем", "callback_data": "send_messages_to_all"},
+            {"name": "Назад", "callback_data": "back"}
+        ]
+    },
+    {
+        "name": "Расписание салонов",
+        "callback_data": "choose_date_salon"
+    },
+    {
+        "name": "Расписание мастеров",
+        "callback_data": "choose_date_master"
+    },
+    {
+        "name": "Записать клиента",
+        "callback_data": "record_client"
+    }
+]
