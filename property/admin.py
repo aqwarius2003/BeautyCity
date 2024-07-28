@@ -33,10 +33,11 @@ class StaffAdmin(admin.ModelAdmin):
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
     search_fields = ('customer',)
-    list_display = ('customer', 'staff', 'date', 'start_time', 'salon', 'created_at')
+    list_display = ('customer', 'staff', 'date', 'start_time', 'salon', 'created_at', 'is_paid')
     list_filter = ('service', 'staff', 'salon')
     readonly_fields = ('created_at',)
     raw_id_fields = ()
+    list_editable = ('is_paid',)
 
 
 class PropertyStaffScheduleSalon(admin.TabularInline):

@@ -169,6 +169,7 @@ class Appointment(models.Model):
     date = models.DateField(default=datetime.today().strftime('%Y-%m-%d'))
     start_time = models.TimeField(default='08:00:00')
     created_at = models.DateTimeField(default=timezone.now)
+    is_paid = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Appointment for {self.customer} with {self.staff} on {self.date}, {self.start_time}"
