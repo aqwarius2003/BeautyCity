@@ -6,6 +6,7 @@ from django.db.models import Q
 
 
 class Customer(models.Model):
+    """Модель клиента"""
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     phone = PhoneNumberField(unique=True)
@@ -17,6 +18,7 @@ class Customer(models.Model):
 
 
 class Service(models.Model):
+    """Модель услуги"""
     name = models.CharField(max_length=100)
     description = models.TextField()
     duration = models.DurationField(default=timedelta)
@@ -24,6 +26,10 @@ class Service(models.Model):
 
     @classmethod
     def get_default_pk(cls):
+        """Даёт primary key пустого экземпляра услуги или создаёт экземпляр если его нет
+
+        нужно для дефолтных значений полей FK(Service) которые обязательны к заполнению
+        """
         service, created = cls.objects.get_or_create(
             name='default service',
             defaults=dict(description='заглушка'),
@@ -35,6 +41,7 @@ class Service(models.Model):
 
 
 class Staff(models.Model):
+    """Модель мастера, сотрудника салона"""
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     phone = PhoneNumberField(unique=True)
@@ -43,13 +50,30 @@ class Staff(models.Model):
     services = models.ManyToManyField(Service, related_name='staff')
 
     def get_services(self):
+        """Строка с услугами мастера для отображения в админке джанго"""
         return ", ".join([service.name for service in self.services.all()])
 
     def get_available_dates(self):
+        """Возвращает доступные даты работы мастера для бронирования.
+
+        Returns:
+            QuerySet or str: Доступные даты или сообщение об их отсутствии.
+        """
         available_dates = self.schedules.filter(date__gt=datetime.today()).values('date', 'salon__address')
+        if not available_dates.exists():
+            return 'Доступных дат нет'
         return available_dates
 
     def get_available_time(self, requested_service, date):
+        """Возвращает доступное время мастера для заданной услуги и даты.
+
+               Args:
+                   requested_service (Service): Запрашиваемая услуга.
+                   date (datetime.date): Запрашиваемая дата.
+
+               Returns:
+                   list: Список доступного времени.
+        """
         try:
             schedule = self.schedules.get(staff=self, date=date)
         except Schedule.DoesNotExist:
@@ -84,23 +108,28 @@ class Staff(models.Model):
 
 
 class Salon(models.Model):
+    """Модель салона"""
     name = models.CharField(max_length=20, unique=True, default='')
     address = models.CharField(max_length=50, unique=True)
     description = models.TextField(max_length=256, default='')
 
     def get_services(self):
+        """Возвращает queryset услуг в салоне основывваясь на данных модели Schedule"""
         services = Service.objects.filter(staff__schedules__salon=self).distinct()
         return services
 
     def get_staff(self):
+        """Возвращает queryset мастеров салона, основываясь на данных модели Schedule"""
         staff = Staff.objects.filter(schedules__salon=self).distinct()
         return staff
 
     def get_price_list(self):
+        """Возвращает queryset словарь с услугами(ключи) и ценами (значения)"""
         price_list = self.get_services().values('name', 'price')
         return price_list
 
     def get_schedules(self):
+        """Возвращает строковое представление графиков работы салона для админки django"""
         return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in
                         self.schedules.all()])
 
@@ -109,6 +138,7 @@ class Salon(models.Model):
     # requested_service = salon.get_services().get(name__contains='Маникюр')
     #
     def get_available_dates(self, requested_service):
+        """Возвращает queryset дат, доступных для записи в выбранном салоне по указанной услуге"""
         available_dates = self.schedules.filter(
             date__gt=datetime.today(),
             staff__services__in=Service.objects.filter(
@@ -116,6 +146,7 @@ class Salon(models.Model):
         return available_dates
 
     def get_available_time(self, requested_service, date):
+        """Возвращает список временных точек, в которые доступна запись на выбранную дату и услугу"""
         schedules = self.schedules.filter(
             staff__services__in=Service.objects.filter(name__contains=requested_service), date=date).distinct()
 
@@ -153,6 +184,9 @@ class Salon(models.Model):
 
 
 class Schedule(models.Model):
+    """"Модель графика работы мастера
+
+    Позволяет гибко настроить работу, учитывая что мастера могут работать в разных салонах в разные даты и время"""
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='schedules')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='schedules')
     date = models.DateField()
@@ -160,16 +194,19 @@ class Schedule(models.Model):
     end_time = models.TimeField(default='18:00:00')
 
     def get_services(self):
-        return [service.name for service in self.staff.services.all()]
+        """Возвращает queryset услуг мастера, указанного в выбранном экземпляре графика"""
+        return self.staff.services.all()
 
     def get_appointments(self):
-        return Appointment.objects.get(date=self.date).get_total_duration()
+        """Возвращает queryset записей клиентов попадающих в данный график (по указанным в графике мастеру и дате)"""
+        return Appointment.objects.get(date=self.date, staff=self.staff)
 
     def __str__(self):
         return f"Schedule for {self.staff} at {self.salon} on {self.date} from {self.start_time} to {self.end_time}"
 
 
 class Appointment(models.Model):
+    """Модель записи клиента на посещение салона красоты"""
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='appointments')
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='appointments',
                                 default=Service.get_default_pk)
