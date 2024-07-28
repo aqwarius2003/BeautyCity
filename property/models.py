@@ -184,7 +184,7 @@ class Salon(models.Model):
 
 
 class Schedule(models.Model):
-    """"Модель графика работы мастера
+    """Модель графика работы мастера
 
     Позволяет гибко настроить работу, учитывая что мастера могут работать в разных салонах в разные даты и время"""
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='schedules')
