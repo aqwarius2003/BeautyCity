@@ -45,6 +45,10 @@ class Staff(models.Model):
     def get_services(self):
         return ", ".join([service.name for service in self.services.all()])
 
+    def get_available_dates(self):
+        available_dates = self.schedules.filter(date__gt=datetime.today()).values('date', 'salon__address')
+        return available_dates
+
     def get_available_time(self, requested_service, date):
         try:
             schedule = self.schedules.get(staff=self, date=date)
@@ -100,15 +104,20 @@ class Salon(models.Model):
         return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in
                         self.schedules.all()])
 
+    # from property.models import Customer, Service, Staff, Appointment, Salon, Schedule
+    # salon = Salon.objects.get(address__contains='Ленина')
+    # requested_service = salon.get_services().get(name__contains='Маникюр')
+    #
     def get_available_dates(self, requested_service):
         available_dates = self.schedules.filter(
+            date__gt=datetime.today(),
             staff__services__in=Service.objects.filter(
                 name__contains=requested_service)).distinct().values_list('date', flat=True)
         return available_dates
 
     def get_available_time(self, requested_service, date):
         schedules = self.schedules.filter(
-            staff__services__in=Service.objects.filter(name__contains=requested_service),date=date).distinct()
+            staff__services__in=Service.objects.filter(name__contains=requested_service), date=date).distinct()
 
         if not schedules.exists():
             return []
