@@ -26,7 +26,7 @@ class Service(models.Model):
     def get_default_pk(cls):
         service, created = cls.objects.get_or_create(
             name='default service',
-            defaults=dict(description='this is not an exam'),
+            defaults=dict(description='заглушка'),
         )
         return service.pk
 
@@ -45,8 +45,38 @@ class Staff(models.Model):
     def get_services(self):
         return ", ".join([service.name for service in self.services.all()])
 
+    def get_available_time(self, requested_service, date):
+        try:
+            schedule = self.schedules.get(staff=self, date=date)
+        except Schedule.DoesNotExist:
+            return []
+
+        appointments = Appointment.objects.filter(staff=self, date=date)
+        service_duration_timedelta = requested_service.duration
+        service_duration_minutes = service_duration_timedelta.total_seconds() // 60
+
+        available_times = []
+
+        start_time = datetime.combine(date, schedule.start_time)
+        end_time = datetime.combine(date, schedule.end_time)
+
+        current_time = start_time
+        while current_time + timedelta(minutes=service_duration_minutes) <= end_time:
+            conflicts = appointments.filter(
+                Q(start_time__lte=current_time.time()) &
+                Q(start_time__gte=(current_time - timedelta(minutes=service_duration_minutes)).time())
+            )
+
+            if not conflicts.exists():
+                available_times.append(current_time.time())
+            current_time += timedelta(minutes=30)
+
+        available_times = sorted(set(available_times))
+
+        return available_times
+
     def __str__(self):
-        return f'{self.first_name }: {", ".join([service.name for service in self.services.all()])}'
+        return f'{self.first_name}: {", ".join([service.name for service in self.services.all()])}'
 
 
 class Salon(models.Model):
@@ -67,7 +97,8 @@ class Salon(models.Model):
         return price_list
 
     def get_schedules(self):
-        return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in self.schedules.all()])
+        return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in
+                        self.schedules.all()])
 
     def get_available_dates(self, requested_service):
         available_dates = self.schedules.filter(
@@ -76,7 +107,8 @@ class Salon(models.Model):
         return available_dates
 
     def get_available_time(self, requested_service, date):
-        schedules = self.schedules.filter(staff__services__in=Service.objects.filter(name__contains=requested_service),date=date).distinct()
+        schedules = self.schedules.filter(
+            staff__services__in=Service.objects.filter(name__contains=requested_service),date=date).distinct()
 
         if not schedules.exists():
             return []
@@ -101,7 +133,7 @@ class Salon(models.Model):
 
                 if not conflicts.exists():
                     available_times.append(current_time.time())
-                current_time += timedelta(minutes=60)
+                current_time += timedelta(minutes=30)
 
         available_times = sorted(set(available_times))
 
@@ -130,7 +162,8 @@ class Schedule(models.Model):
 
 class Appointment(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='appointments')
-    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='appointments', default=Service.get_default_pk)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='appointments',
+                                default=Service.get_default_pk)
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='appointments')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='appointments')
     date = models.DateField(default=datetime.today().strftime('%Y-%m-%d'))
