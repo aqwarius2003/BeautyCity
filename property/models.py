@@ -129,13 +129,14 @@ class Salon(models.Model):
     description = models.TextField(max_length=256, default='')
 
     def get_services(self):
-        """Возвращает queryset услуг в салоне основывваясь на данных модели Schedule"""
-        services = Service.objects.filter(staff__schedules__salon=self).distinct()
+        """Возвращает queryset услуг в салоне, основывваясь на данных модели Schedule"""
+        services = Service.objects.filter(
+            staff__schedules__date__gt=datetime.today(), staff__schedules__salon=self).distinct()
         return services
 
     def get_staff(self):
         """Возвращает queryset мастеров салона, основываясь на данных модели Schedule"""
-        staff = Staff.objects.filter(schedules__salon=self).distinct()
+        staff = Staff.objects.filter(schedules__date__gt=datetime.today(), schedules__salon=self).distinct()
         return staff
 
     def get_price_list(self):
@@ -226,7 +227,7 @@ class Appointment(models.Model):
                                 default=Service.get_default_pk)
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='appointments')
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='appointments')
-    date = models.DateField(default=datetime.today().strftime('%Y-%m-%d'))
+    date = models.DateField(default=(datetime.today() + timedelta(days=1)))
     start_time = models.TimeField(default='08:00:00')
     created_at = models.DateTimeField(default=timezone.now)
     is_paid = models.BooleanField(default=False)
