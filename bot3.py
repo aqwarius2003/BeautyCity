@@ -1,35 +1,56 @@
 from telegram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters, ConversationHandler
+from administrator_bot import confirm_booking
 import django
 import os
+import re
+from dotenv import load_dotenv
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'beauty.settings')
 django.setup()
 
 from property.models import Customer, Service, Staff, Salon, Schedule, Appointment
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time
 
-from admin import is_admin, show_admin_menu
+from administrator_bot import is_admin, show_admin_menu
+# from admin_menu import remind_tomorrow_command
 
 users = {}
+load_dotenv()
+TOKEN = os.getenv('TG_BOT_TOKEN')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
 # Меню больших кнопок
 big_keyboard = ["Записаться", "Мои записи", "Салоны", "Мастера", "Услуги", "Администратор"]
 
-def build_keyboard_two_columns(buttons):
+def build_keyboard_two_columns(items: list) -> InlineKeyboardMarkup:
+    """
+    Создает разметку клавиатуры с двумя столбцами.
+
+    :param items: Список элементов, которые нужно вывести в меню.
+    :return: Разметка клавиатуры с двумя столбцами.
+    """
     keyboard = []
-    row = []
-    for i in range(len(buttons)):
-        if hasattr(buttons[i], 'name'):
-            button_text = buttons[i].name
+    for i, item in enumerate(items):
+        if isinstance(item, str):
+            if i % 2 == 0:
+                keyboard.append([InlineKeyboardButton(item, callback_data=item)])
+            else:
+                keyboard[-1].append(InlineKeyboardButton(item, callback_data=item))
+        elif isinstance(item, datetime.date):
+            if i % 2 == 0:
+                keyboard.append([InlineKeyboardButton(item.strftime('%d.%m.%Y'), callback_data=item.strftime('%d.%m.%Y'))])
+            else:
+                keyboard[-1].append(InlineKeyboardButton(item.strftime('%d.%m.%Y'), callback_data=item.strftime('%d.%m.%Y')))
         else:
-            button_text = f"{buttons[i].first_name} {buttons[i].last_name}"
-        row.append(InlineKeyboardButton(button_text, callback_data=f'{buttons[i].__class__.__name__.lower()}_{buttons[i].id}'))
-        if (i + 1) % 2 == 0:
-            keyboard.append(row)
-            row = []
-    if row:
-        keyboard.append(row)
+            if i % 2 == 0:
+                keyboard.append([InlineKeyboardButton(f'{item.first_name} {item.last_name}', callback_data=item.id)])
+            else:
+                keyboard[-1].append(InlineKeyboardButton(f'{item.first_name} {item.last_name}', callback_data=item.id))
+
+    if len(items) % 2 != 0:
+        keyboard[-1].append(InlineKeyboardButton())
+
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -63,7 +84,8 @@ def show_big_keyboard(update: Update, context: CallbackContext, chat_id):
         message.reply_text('Выберите опцию:', reply_markup=keyboard)
 
 
-# Функция отображения основного меню
+# Определяем состояние "главное меню"
+MAIN_MENU = 0
 def show_main_menu(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     user_data = context.user_data
@@ -104,13 +126,68 @@ def show_main_menu(update: Update, context: CallbackContext):
             [InlineKeyboardButton("Отменить запись", callback_data='cancel_booking')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
+
         update.effective_message.reply_text(booking_info, reply_markup=reply_markup)
 
 
+def cancel_booking(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    user_data = context.user_data
+
+    # Очищаем данные пользователя
+    user_data.clear()
+
+    # Отправляем сообщение об отмене записи
+    update.effective_message.reply_text("Запись отменена.")
+
+    # Возвращаемся в начальное состояние разговора
+    return ConversationHandler.END
+
+
+# Создаем обработчик разговора
+conversation_handler = ConversationHandler(
+    entry_points=[CommandHandler('start', show_main_menu)],
+    states={
+        MAIN_MENU: [CallbackQueryHandler(show_main_menu, pattern='^(select_salon|select_service|select_staff|select_date|select_time)$')]
+    },
+    fallbacks=[CommandHandler('cancel', cancel_booking)]
+)
+
+
+def build_keyboard_two_columns(items: list) -> InlineKeyboardMarkup:
+    """
+    Создает разметку клавиатуры с двумя столбцами.
+
+    :param items: Список элементов, которые нужно вывести в меню.
+    :return: Разметка клавиатуры с двумя столбцами.
+    """
+    keyboard = []
+    for i, item in enumerate(items):
+        if isinstance(item, str):
+            if i % 2 == 0:
+                keyboard.append([InlineKeyboardButton(item, callback_data=item)])
+            else:
+                keyboard[-1].append(InlineKeyboardButton(item, callback_data=item))
+        elif isinstance(item, datetime.date):
+            if i % 2 == 0:
+                keyboard.append([InlineKeyboardButton(item.strftime('%d.%m.%Y'), callback_data=item.strftime('%d.%m.%Y'))])
+            else:
+                keyboard[-1].append(InlineKeyboardButton(item.strftime('%d.%m.%Y'), callback_data=item.strftime('%d.%m.%Y')))
+        else:
+            if i % 2 == 0:
+                keyboard.append([InlineKeyboardButton(f'{item.first_name} {item.last_name}', callback_data=item.id)])
+            else:
+                keyboard[-1].append(InlineKeyboardButton(f'{item.first_name} {item.last_name}', callback_data=item.id))
+
+    if len(items) % 2 != 0:
+        keyboard[-1].append(InlineKeyboardButton())
+
+    return InlineKeyboardMarkup(keyboard)
 
 
 def show_salons_menu(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
+    # chat_id = update.message.chat_id
     service_id = context.user_data.get('service_id')
     staff_id = context.user_data.get('staff_id')
     date = context.user_data.get('date')
@@ -122,12 +199,18 @@ def show_salons_menu(update: Update, context: CallbackContext):
         filters['schedules__staff_id'] = staff_id
     if date:
         filters['schedules__date'] = date
+    else:
+        filters['schedules__date__gte'] = datetime.today()
 
     salons = Salon.objects.filter(**filters).distinct()
 
-    keyboard = build_keyboard_two_columns(salons)
-    keyboard.inline_keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Выберите салон", reply_markup=keyboard)
+    keyboard = []
+    for salon in salons:
+        keyboard.append([InlineKeyboardButton(salon.name, callback_data=f'salon_{salon.id}')])
+
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Выберите салон", reply_markup=reply_markup)
 
 
 def show_services_menu(update: Update, context: CallbackContext):
@@ -143,40 +226,72 @@ def show_services_menu(update: Update, context: CallbackContext):
         filters['staff__id'] = staff_id
     if date:
         filters['staff__schedules__date'] = date
+    else:
+        filters['staff__schedules__date__gte'] = datetime.today()
 
     services = Service.objects.filter(**filters).distinct()
 
-    keyboard = build_keyboard_two_columns(services)
-    keyboard.inline_keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Выберите услугу", reply_markup=keyboard)
+    keyboard = []
+    for service in services:
+        keyboard.append([InlineKeyboardButton(service.name, callback_data=f'service_{service.id}')])
+
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Выберите услугу", reply_markup=reply_markup)
+
 
 def show_staff_menu(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     salon_id = context.user_data.get('salon_id')
     service_id = context.user_data.get('service_id')
-    if salon_id and service_id:
-        staffs = Staff.objects.filter(services__id=service_id, schedules__salon_id=salon_id).distinct()
-    elif service_id:
-        staffs = Staff.objects.filter(services__id=service_id).distinct()
+    date = context.user_data.get('date')
+
+    filters = {}
+    if salon_id:
+        filters['schedules__salon_id'] = salon_id
+    if service_id:
+        filters['services__id'] = service_id
+    if date:
+        filters['schedules__date'] = date
     else:
-        staffs = Staff.objects.all()
-    keyboard = build_keyboard_two_columns(staffs).inline_keyboard
+        filters['schedules__date__gte'] = datetime.today()
+
+    staffs = Staff.objects.filter(**filters).distinct()
+
+    keyboard = []
+    for staff in staffs:
+        keyboard.append(
+            [InlineKeyboardButton(f'{staff.first_name} {staff.last_name}', callback_data=f'staff_{staff.id}')])
+
     keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.effective_message.reply_text("Выберите мастера:", reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Выберите мастера:", reply_markup=reply_markup)
 
 
 def show_date_picker(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
+    service_id = context.user_data.get('service_id')
     staff_id = context.user_data.get('staff_id')
+    salon_id = context.user_data.get('salon_id')
+
+    filters = {}
+    if salon_id:
+        filters['staff__schedules__salon'] = salon_id
     if staff_id:
-        available_dates = Schedule.objects.filter(staff_id=staff_id).values_list('date', flat=True).distinct()
-    else:
-        available_dates = Schedule.objects.all().values_list('date', flat=True).distinct()
-    keyboard = [
-        [InlineKeyboardButton(date.strftime("%d.%m.%Y"), callback_data=f'date_{date.strftime("%Y-%m-%d")}')]
-        for date in available_dates
-    ]
+        filters['staff'] = staff_id
+    if service_id:
+        filters['staff__services__id'] = service_id
+
+    available_dates = Schedule.objects.filter(**filters).distinct()
+    available_dates = available_dates.filter(date__gte=datetime.today())
+    # Создание уникального списка дат
+    unique_dates = set(schedule.date for schedule in available_dates)
+    keyboard = []
+    for unique_date in sorted(unique_dates):
+        date_datetime = datetime.combine(unique_date, time.min)
+        # date_datetime = datetime.combine(schedule.date, time.min)
+        keyboard.append([InlineKeyboardButton(date_datetime.strftime('%d.%m.%Y'),
+                                              callback_data=f'date_{unique_date.strftime("%Y-%m-%d")}')])
     keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.effective_message.reply_text("Выберите дату:", reply_markup=reply_markup)
@@ -189,11 +304,32 @@ def show_time_picker(update: Update, context: CallbackContext):
     if staff_id and date_str:
         date = datetime.strptime(date_str, '%Y-%m-%d').date()
         staff = Staff.objects.get(id=staff_id)
-        available_times = staff.get_available_time(Service.objects.get(id=user_data['service_id']), date)
-        keyboard = [
-            [InlineKeyboardButton(time.strftime("%H:%M"), callback_data=f'time_{time.strftime("%H:%M")}')] for time in available_times
-        ]
+        service = Service.objects.get(id=user_data['service_id'])
+        available_times = staff.get_available_time(service, date)
+
         if not available_times:
+            update.effective_message.reply_text("К сожалению, на выбранную дату и время нет доступных записей.")
+            return
+
+        # Текущее время
+        now = datetime.now()
+
+        # Создание клавиатуры
+        keyboard = []
+        row = []
+        for i, time in enumerate(available_times):
+            # Создание полного datetime объекта для сравнения
+            datetime_slot = datetime.combine(date, time)
+            if datetime_slot > now:
+                time_str = time.strftime('%H:%M')
+                row.append(InlineKeyboardButton(time_str, callback_data=f'time_{time_str}'))
+                if (i + 1) % 3 == 0:
+                    keyboard.append(row)
+                    row = []
+        if row:
+            keyboard.append(row)
+
+        if not keyboard:
             update.effective_message.reply_text("К сожалению, на выбранную дату и время нет доступных записей.")
         else:
             keyboard.append([InlineKeyboardButton("Назад", callback_data='main_menu')])
@@ -248,6 +384,9 @@ def save_appointment_from_user_data(update, context):
             )
             appointment.save()
             context.bot.send_message(chat_id=chat_id, text="Запись успешно создана!")
+
+            # notify_admin(Update,CallbackContext)
+
         except Customer.DoesNotExist:
             context.bot.send_message(chat_id=chat_id,
                                      text="Ошибка при создании записи. Пожалуйста, попробуйте снова.")
@@ -290,8 +429,6 @@ def button(update: Update, context: CallbackContext):
     elif callback_data == 'confirm':
         save_appointment_from_user_data(update, context)
         user_data.clear()
-        # show_main_menu(update, context)
-    #     handle_confirmation(update, context)
     elif callback_data == 'confirm_cancel':
         handle_confirm_cancel(update, context)
     elif callback_data == 'cancel':
@@ -389,6 +526,7 @@ def show_admin_message(update: Update, context: CallbackContext):
 
 
 def show_salons(update: Update, context: CallbackContext):
+
     chat_id = update.message.chat_id
     salons = Salon.objects.all()
 
@@ -404,6 +542,7 @@ def show_salons(update: Update, context: CallbackContext):
 
 def show_staffs(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
+
     staffs = Staff.objects.all()
 
     if staffs.exists():
@@ -460,8 +599,6 @@ def handle_contact(update: Update, context: CallbackContext):
     else:
         context.bot.send_message(chat_id=chat_id, text="Вы уже зарегистрированы!")
 
-    # save_appointment_from_user_data(update, context)
-
 
 def register_user(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
@@ -480,10 +617,28 @@ def register_user(update: Update, context: CallbackContext):
     else:
         context.bot.send_message(chat_id=chat_id, text="Вы уже зарегистрированы!")
         show_big_keyboard(update, context, chat_id)
+# Функция для запуска меню администратора
+def start_admin_menu(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Добро пожаловать в меню администратора.")
+    show_admin_menu(update, context)
+
+# Функция для проверки пароля и вызова меню администратора
+def admin_command(update: Update, context: CallbackContext) -> None:
+    command = update.message.text
+    match = re.match(r'/admin:(\w+)', command)
+    if match:
+        password = match.group(1)
+        if password == ADMIN_PASSWORD:
+            start_admin_menu(update, context)
+        else:
+            update.message.reply_text("Неправильный пароль.")
+    else:
+        update.message.reply_text("Используйте формат /admin:password")
+
 
 
 def main():
-    updater = Updater("6506598877:AAE0D2T8MygorZoF6dxNJmYspSI-lwyKyDo", use_context=True)
+    updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
@@ -493,8 +648,14 @@ def main():
     dp.add_handler(MessageHandler(Filters.text("Мастера"), show_staffs))
     dp.add_handler(MessageHandler(Filters.text("Услуги"), show_services))
     dp.add_handler(MessageHandler(Filters.text("Администратор"), show_admin_message))
+    dp.add_handler(CallbackQueryHandler(cancel_booking, pattern='^cancel_booking$'))
     dp.add_handler(CallbackQueryHandler(button))
+
+    dp.add_handler(CallbackQueryHandler(cancel_booking, pattern='^cancel_booking$'))
     dp.add_handler(MessageHandler(Filters.contact, handle_contact))
+    dp.add_handler(MessageHandler(Filters.regex(r'^/admin:\w+'), admin_command))
+    # dp.add_handler(CommandHandler("remind_tomorrow", remind_tomorrow_command))
+    dp.add_handler(conversation_handler)
 
     updater.start_polling()
     updater.idle()

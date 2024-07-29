@@ -17,6 +17,8 @@ SECRET_KEY = env.str('SECRET_KEY', 'REPLACE_ME')
 
 DEBUG = env.bool('DEBUG', True)
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 # Application definition
 
@@ -104,5 +106,3 @@ DATABASES = {
         'NAME': 'db.sqlite3',
     }
 }
-
-

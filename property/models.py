@@ -54,16 +54,34 @@ class Staff(models.Model):
         """Строка с услугами мастера для отображения в админке джанго"""
         return ", ".join([service.name for service in self.services.all()])
 
-    def get_available_dates(self):
-        """Возвращает доступные даты работы мастера для бронирования.
+
+    def get_available_dates(service_id=None, staff_id=None, salon_id=None):
+        """Возвращает список доступных дат для записи на основе выбранных параметров.
+
+        Args:
+            service_id (int, optional): Идентификатор выбранной услуги.
+            staff_id (int, optional): Идентификатор выбранного мастера.
+            salon_id (int, optional): Идентификатор выбранного салона.
 
         Returns:
-            QuerySet or str: Доступные даты или сообщение об их отсутствии.
+            list: Список доступных дат.
         """
-        available_dates = self.schedules.filter(date__gt=datetime.today()).values('date', 'salon__address')
-        if not available_dates.exists():
-            return 'Доступных дат нет'
-        return available_dates
+
+        # Создать пустой запрос
+        available_dates = Schedule.objects.filter()
+
+        # Применить фильтры, если указаны параметры
+        if service_id:
+            available_dates = available_dates.filter(staff__services=service_id)
+        if staff_id:
+            available_dates = available_dates.filter(staff=staff_id)
+        if salon_id:
+            available_dates = available_dates.filter(salon=salon_id)
+
+        # Получить список доступных дат
+        available_dates = available_dates.filter(date__gte=datetime.today()).values_list('date', flat=True).distinct()
+
+        return list(available_dates)
 
     def get_available_time(self, requested_service, date):
         """Возвращает доступное время мастера для заданной услуги и даты.
