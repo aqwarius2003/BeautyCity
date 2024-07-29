@@ -13,6 +13,21 @@ class Customer(models.Model):
     email = models.EmailField(unique=True, null=True, blank=True)
     telegram_id = models.IntegerField(unique=True, null=True, blank=True)
 
+    @classmethod
+    def create(cls, first_name: str, last_name: str, phone: str, email: str, telegram_id: int):
+        """Создаёт новый экземпляр модели клиента
+
+        new_customer = Customer.create(
+        first_name="Иван",
+        last_name="Иванов",
+        phone="+79991234567",
+        email="ivanov@example.com",
+        telegram_id="@ivanov"
+        )
+"""
+        customer = cls(first_name=first_name, last_name=last_name, phone=phone, email=email, telegram_id=telegram_id)
+        return customer
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
@@ -133,10 +148,6 @@ class Salon(models.Model):
         return ''.join([f'{schedule.staff.first_name} {schedule.staff.last_name} {schedule.date} / ' for schedule in
                         self.schedules.all()])
 
-    # from property.models import Customer, Service, Staff, Appointment, Salon, Schedule
-    # salon = Salon.objects.get(address__contains='Ленина')
-    # requested_service = salon.get_services().get(name__contains='Маникюр')
-    #
     def get_available_dates(self, requested_service):
         """Возвращает queryset дат, доступных для записи в выбранном салоне по указанной услуге"""
         available_dates = self.schedules.filter(
@@ -206,7 +217,10 @@ class Schedule(models.Model):
 
 
 class Appointment(models.Model):
-    """Модель записи клиента на посещение салона красоты"""
+    """Модель записи клиента на посещение салона красоты
+
+    new_appointment = Appointment.create(25, requested_service, staff, salon, date)
+    """
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='appointments')
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='appointments',
                                 default=Service.get_default_pk)
@@ -216,6 +230,12 @@ class Appointment(models.Model):
     start_time = models.TimeField(default='08:00:00')
     created_at = models.DateTimeField(default=timezone.now)
     is_paid = models.BooleanField(default=False)
+
+    @classmethod
+    def create(cls, user_tg_id, service, staff, salon, date):
+        customer = Customer.objects.get(telegram_id=user_tg_id)
+        appointment = cls(customer=customer, service=service, staff=staff, salon=salon, date=date)
+        return appointment
 
     def __str__(self):
         return f"Appointment for {self.customer} with {self.staff} on {self.date}, {self.start_time}"
