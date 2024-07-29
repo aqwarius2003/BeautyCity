@@ -1,8 +1,16 @@
 # Гайд по работе с БД
 Тут можно найти описание моделей, полей этих моделей, а также примеры запросов ОРМ и конечно же хау ту инсталл.
 
-[TOC]
-
+## Содержание
+1. [Install](#install)
+2. [Описание моделей](#описание-моделей)
+    - [Customer](#customer)
+    - [Service](#service)
+    - [Staff](#staff)
+    - [Salon](#salon)
+    - [Schedule](#schedule)
+    - [Appointment](#appointment)
+   
 ## Install
 Нужны вот эти библиотеки:
 ```
